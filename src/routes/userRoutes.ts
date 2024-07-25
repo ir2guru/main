@@ -39,6 +39,22 @@ const s3Client = new S3Client({
     }),
   });
 
+  const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = './src/uploads';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + '-' + file.originalname);
+    }
+});
+
+const uploads = multer({ storage: storage });
+
 router.post('/ideas', upload.fields([{ name: 'banner', maxCount: 1 }, { name: 'files', maxCount: 10 }]), postIdea);
 router.post('/login', loginUser);
 router.post('/reg', reguser);
@@ -94,35 +110,29 @@ router.post('/upload/:userId', upload.single('ppicture'), async (req: Request, r
   const { userId } = req.params;
 
   try {
-      // Check if the file is uploaded
-      if (!req.file) {
-          return res.status(400).json({ message: 'No file uploaded' });
-      }
+    // Check if the file is uploaded
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
 
-      const filePath = req.file.path;
+    const s3Url = (req.file as Express.MulterS3.File).location;
 
-      // Upload to Cloudinary
-      const result = await cloudinary.uploader.upload(filePath, { resource_type: 'image' });
+    // Update the user's profile picture
+    const profile = await Profile.findOne({ userId: new mongoose.Types.ObjectId(userId) });
+    if (!profile) {
+      return res.status(404).json({ message: 'Profile not found' });
+    }
 
-      // Delete the local file after uploading to Cloudinary
-      fs.unlinkSync(filePath);
+    profile.ppicture = s3Url; // Update the profile picture with S3 URL
+    await profile.save();
 
-      // Update the user's profile picture
-      const profile = await Profile.findOne({ userId: new mongoose.Types.ObjectId(userId) });
-      if (!profile) {
-          return res.status(404).json({ message: 'Profile not found' });
-      }
-
-      profile.ppicture = result.secure_url; // Update the profile picture with Cloudinary URL
-      await profile.save();
-
-      res.status(200).json({
-          message: 'Profile picture updated successfully',
-          ppicture: profile.ppicture
-      });
+    res.status(200).json({
+      message: 'Profile picture updated successfully',
+      ppicture: profile.ppicture,
+    });
   } catch (error) {
-      console.error('Error updating profile picture:', error);
-      res.status(500).json({ message: 'Failed to update profile picture' });
+    console.error('Error updating profile picture:', error);
+    res.status(500).json({ message: 'Failed to update profile picture' });
   }
 });
 

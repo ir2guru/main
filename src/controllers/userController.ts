@@ -13,6 +13,7 @@ import ModifiedIdea from '../models/modifiedIdea';
 import Thumb from '../models/thumb';
 import { fetchCommentAndReplyCounts } from '../middleware/CommentCounter';
 import { getLikeCountForIdea } from '../middleware/LikeCount';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 // Function to send email
 const sendEmail = async (email: string, subject: string, htmlContent: string) => {
@@ -40,6 +41,14 @@ const sendEmail = async (email: string, subject: string, htmlContent: string) =>
         console.error('Error sending email:', error);
     }
 };
+
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
 
 const sendNotifi = async (userId: string, title: string, body: string) => {
   try {
@@ -853,15 +862,17 @@ export const fetchModifiedIdeasByUserId = async (req: Request, res: Response) =>
         const thumbs = await Thumb.findOne({ ideaId: modified.id }).select('path');
         const commentCounts = await fetchCommentAndReplyCounts(modified.id);
         const ideaLikeCount = await getLikeCountForIdea(modified.id);
+        const Originalthumbs = await Thumb.findOne({ ideaId: modified.originalIdeaId }).select('path');
 
         return {
             ...modified.toObject(),
             fname: user?.fname,
             lname: user?.lname,
             pow: profile?.pow,
-            banner: thumbs?.path,
+            banner: thumbs,
             likes: ideaLikeCount,
-            count: commentCounts.totalAll
+            count: commentCounts.totalAll,
+            OriginalThumb : Originalthumbs
         };
     }));
 

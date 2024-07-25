@@ -21,6 +21,7 @@ import Metadata, { IMetadata } from '../models/metadata';
 import { checkAndAddUserView } from '../utils/checkAndAddUserView';
 import { io } from '..';
 import Idea from '../models/Idea';
+import IdeaView from '../models/IdeaView';
 
 const sendNotifi = async (userId: string, title: string, body: string) => {
     try {
@@ -49,6 +50,23 @@ const sendNotifi = async (userId: string, title: string, body: string) => {
       console.log('Failed to send notification.');
     }
   };
+
+  function calculateReadingTime(text: string): number {
+    // Calculate the number of words in the text
+    const words = text.trim().split(/\s+/).length;
+  
+    // Reading speed in words per minute
+    const wordsPerMinute = 200;
+  
+    // Calculate the reading time in minutes
+    const timeInMinutes = words / wordsPerMinute;
+  
+    // Convert the time to seconds
+    const timeInSeconds = timeInMinutes * 60;
+  
+    // Return the total time in seconds
+    return Math.ceil(timeInSeconds);
+  }
   
 
   export const postIdea = async (req: Request, res: Response) => {
@@ -152,6 +170,9 @@ export const fetchIdeas = async (req: Request, res: Response): Promise<void> => 
             const commentCounts = await fetchCommentAndReplyCounts(idea.id);
             const ideaLikeCount = await getLikeCountForIdea(idea.id);
             const userHasLiked = await Like.exists({ userId, ideaId: idea.id });
+            const wpm = calculateReadingTime(idea.body);
+            const viewCount = await IdeaView.countDocuments({ideaId: idea.id});
+            
 
             return {
                 ...idea.toObject(),
@@ -162,6 +183,8 @@ export const fetchIdeas = async (req: Request, res: Response): Promise<void> => 
                 likes: ideaLikeCount,
                 count: commentCounts.totalAll,
                 profile: profile,
+                wordpm: wpm,
+                viewCount: viewCount,
                 userHasLiked: !!userHasLiked // Convert to boolean
             };
         }));
@@ -195,6 +218,9 @@ export const getIdeaWithDocuments = async (req: Request, res: Response): Promise
         const pitches = await Pitch.find({ ideaId: id }).exec();
         const user = await User.findById(idea.userId).select('fname lname');
         const profile = await Profile.findOne({ userId: idea.userId }).select('pow title ppicture');
+        const wpm = calculateReadingTime(idea.body);
+        const viewCount = await IdeaView.countDocuments({ideaId: idea.id});
+
         const ideaLikeCount = await getLikeCountForIdea(idea.id);
 
         let userHasLiked = false;
@@ -215,13 +241,15 @@ export const getIdeaWithDocuments = async (req: Request, res: Response): Promise
         res.status(200).json({
             idea: idea.toObject(),
             userHasLiked,
+            viewCounts: viewCount,
             likes: ideaLikeCount,
             count: commentCounts.totalAll,
             documents,
             thumbs,
             pitches,
             user,
-            profile
+            profile,
+            wordpm : wpm
         });
     } catch (error) {
         console.error(`Error fetching idea with ID ${req.params.id}:`, error);
@@ -256,6 +284,7 @@ export const getModifiedIdeaWithDocuments = async (req: Request, res: Response):
         const user = await User.findById(idea.userId).select('fname lname');
         const profile = await Profile.findOne({ userId: idea.userId }).select('pow title ppicture');
         const ideaLikeCount = await getLikeCountForIdea(idea.id);
+        const wpm = calculateReadingTime(idea.body);
 
         res.status(200).json({ 
             idea: idea.toObject(), 
@@ -264,7 +293,8 @@ export const getModifiedIdeaWithDocuments = async (req: Request, res: Response):
             thumbs, 
             pitches, 
             user, 
-            profile 
+            profile,
+            wordpm: wpm
         });
     } catch (error) {
         console.error(`Error fetching idea with ID ${req.params.id}:`, error);
@@ -405,6 +435,7 @@ export const fetchIdeaByStatus = async (req: Request, res: Response) => {
             const commentCounts = await fetchCommentAndReplyCounts(idea.id);
             const ideaLikeCount = await getLikeCountForIdea(idea.id);
             const profile = await Profile.findOne({ userId: idea.userId });
+            const wpm = calculateReadingTime(idea.body);
             return {
                 ...idea.toObject(),
                 fname: user?.fname,
@@ -412,7 +443,8 @@ export const fetchIdeaByStatus = async (req: Request, res: Response) => {
                 banner: thumbs?.path,
                 likes: ideaLikeCount,
                 count: commentCounts.totalAll,
-                profile: profile
+                profile: profile,
+                wordpm: wpm
             };
         }));
 
@@ -513,6 +545,7 @@ export const fetchActiveIdeasByCategory = async (req: Request, res: Response) =>
                 const profile = await Profile.findOne({ userId: idea.userId });
                 const thumbs = await Thumb.find({ ideaId: idea.id }).exec();
                 const user = await User.findById(idea.userId).select('fname lname');
+                const wpm = calculateReadingTime(idea.body);
                 
                 return {
                     ...idea.toObject(),
@@ -520,7 +553,8 @@ export const fetchActiveIdeasByCategory = async (req: Request, res: Response) =>
                     likes: ideaLikeCount,
                     count: commentCounts.totalAll, // Add the fetched variable to the idea object
                     profile: profile,
-                    thumb: thumbs
+                    thumb: thumbs,
+                    wordpm: wpm
                 };
             })
         );
@@ -608,7 +642,7 @@ export const fetchGroupsByIdeaId = async (req: Request, res: Response) => {
 };
 export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { limit, userId } = req.query;
+        const { limit, userId, category } = req.query;
 
         if (!limit || isNaN(Number(limit))) {
             res.status(400).json({ message: 'Valid limit is required' });
@@ -617,8 +651,8 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
 
         const parsedLimit = parseInt(limit as string, 10);
 
-        // Fetch the ideas, populate with the number of likes, and thumb paths
-        const ideasWithDetails = await Idea.aggregate([
+        // Build the aggregation pipeline
+        const pipeline: any[] = [
             {
                 $lookup: {
                     from: 'likes',
@@ -657,13 +691,28 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
                     thumbs: 0
                 }
             }
-        ]);
+        ];
+
+        // Add category filter if provided
+        if (category) {
+            pipeline.unshift({
+                $match: {
+                    category: category
+                }
+            });
+        }
+
+        // Fetch the ideas, populate with the number of likes, and thumb paths
+        const ideasWithDetails = await Idea.aggregate(pipeline);
 
         // Loop through each idea and fetch user details
         const ideasWithUserDetails = await Promise.all(
             ideasWithDetails.map(async (idea) => {
                 const user = await User.findById(idea.userId).select('fname lname');
                 const profile = await Profile.findOne({ userId: idea.userId });
+                const wpm = calculateReadingTime(idea.body);
+                const commentCounts = await fetchCommentAndReplyCounts(idea.id);
+                const ideaLikeCount = await getLikeCountForIdea(idea.id);
                 let userHasLiked = false;
                 if (userId) {
                     const user = await User.findOne({ _id: userId }).exec();
@@ -682,7 +731,10 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
                     ppicture: profile?.ppicture || '',
                     pow: profile?.pow,
                     position: profile?.position,
-                    hasliked : userHasLiked
+                    hasliked : userHasLiked,
+                    wordpm: wpm,
+                    likeCount: ideaLikeCount,
+                    count: commentCounts.totalAll
                 };
             })
         );
@@ -697,9 +749,10 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
     }
 };
 
+
 export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { limit, userId } = req.query;
+        const { limit, userId, category } = req.query;
 
         if (!limit || isNaN(Number(limit))) {
             res.status(400).json({ message: 'Valid limit is required' });
@@ -708,8 +761,8 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
 
         const parsedLimit = parseInt(limit as string, 10);
 
-        // Fetch the ideas, populate with the number of views, and thumb paths
-        const ideasWithDetails = await Idea.aggregate([
+        // Build the aggregation pipeline
+        const pipeline: any[] = [
             {
                 $lookup: {
                     from: 'ideaviews',
@@ -748,13 +801,29 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
                     thumbs: 0
                 }
             }
-        ]);
+        ];
+
+        // Add category filter if provided
+        if (category) {
+            pipeline.unshift({
+                $match: {
+                    category: category
+                }
+            });
+        }
+
+        // Fetch the ideas, populate with the number of views, and thumb paths
+        const ideasWithDetails = await Idea.aggregate(pipeline);
 
         // Loop through each idea and fetch user details
         const ideasWithUserDetails = await Promise.all(
             ideasWithDetails.map(async (idea) => {
                 const user = await User.findById(idea.userId).select('fname lname');
                 const profile = await Profile.findOne({ userId: idea.userId }).select('ppicture');
+                const wpm = calculateReadingTime(idea.body);
+                const commentCounts = await fetchCommentAndReplyCounts(idea.id);
+                const ideaLikeCount = await getLikeCountForIdea(idea.id);
+
                 let userHasLiked = false;
                 if (userId) {
                     const user = await User.findOne({ _id: userId }).exec();
@@ -765,8 +834,6 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
                         return;
                     }
                 }
-        
-                console.log(idea._id);
 
                 return {
                     ...idea,
@@ -775,7 +842,10 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
                     ppicture: profile?.ppicture || '',
                     pow: profile?.pow,
                     position: profile?.position,
-                    hasliked: userHasLiked 
+                    hasliked: userHasLiked,
+                    wordpm: wpm,
+                    likeCount: ideaLikeCount,
+                    count: commentCounts.totalAll
                 };
             })
         );
@@ -789,6 +859,7 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
         res.status(500).json({ message: 'Failed to fetch top ideas' });
     }
 };
+
 
 export const fetchModifiedIdeasByUser = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -813,6 +884,7 @@ export const fetchModifiedIdeasByUser = async (req: Request, res: Response): Pro
                 const user = await User.findById(modifiedIdea.userId).select('fname lname');
                 const profile = await Profile.findOne({ userId: modifiedIdea.userId }).select('ppicture');
                 const OgIdea = await Idea.findOne({_id: modifiedIdea.originalIdeaId}).select('headline');
+                const wpm = calculateReadingTime(modifiedIdea.body);
 
                 return {
                     ...modifiedIdea.toObject(),
@@ -821,7 +893,9 @@ export const fetchModifiedIdeasByUser = async (req: Request, res: Response): Pro
                     ppicture: profile?.ppicture || '',
                     pow: profile?.pow,
                     position: profile?.position,
-                    originalTitle: OgIdea?.headline
+                    originalTitle: OgIdea?.headline,
+                    wordpm: wpm
+
                 };
             })
         );

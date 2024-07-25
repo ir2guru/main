@@ -45,7 +45,7 @@ const sendNotifi = async (userId: string, title: string, body: string) => {
   
 
 export const createGroup = async (req: Request, res: Response) => {
-    const { ideaId, name, userId } = req.body;
+    const { ideaId, name, userId, text } = req.body;
 
     try {
         // Ensure the idea exists
@@ -58,6 +58,7 @@ export const createGroup = async (req: Request, res: Response) => {
         const group = new Group({
             ideaId,
             name,
+            text,
             admin: userId,
         });
 
@@ -510,8 +511,10 @@ export const fetchGroupsByUser = async (req: Request, res: Response): Promise<vo
         const groupsWithDetails = await Promise.all(
             groups.map(async (group) => {
                 const adminUser = await User.findById(group.admin).select('fname lname');
-                const idea = await Idea.findById(group.ideaId).select('title description');
-                const thumbs = await Thumb.findOne({ideadId: group.ideaId});
+                const idea = await Idea.findById(group.ideaId);
+                const thumbs = await Thumb.findOne({ideaId: group.ideaId});
+
+                console.log(group.ideaId);
 
                 return {
                     ...group.toObject(),
