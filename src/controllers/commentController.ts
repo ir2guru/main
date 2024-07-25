@@ -83,7 +83,7 @@ export const commentOnIdea = async (req: Request, res: Response) => {
         //await createNotification('New Comment on your Idea',IdeaPosted.userId, 'Comment',  notificationTitle,'',ideaId,`${username?.fname} ${username?.lname}`, userId);
         //await sendNotifi(IdeaPosted.userId,`Your Idea Got A Comment`, notificationTitle,);
         await createNotification('New Comment on your Idea', 'Comment', notificationTitle, datameta);
-        notifyUser(userId, 'you have a new notification');
+        //notifyUser(userId, 'you have a new notification');
         const notificationMessage = "New Notification";
         const notificationStatus = "true";
             
