@@ -35,7 +35,7 @@ const sendNotifi = async (userId: string, title: string, body: string) => {
       }
   
       // Send notification
-      await sendNotification(token, { title, body });
+      //await sendNotification(token, { title, body });
       console.log('Notification sent successfully.');
     } catch (error) {
       console.error('Error sending notification:', error);
@@ -130,7 +130,7 @@ export const inviteMember = async (req: Request, res: Response) => {
         // Send email notification to the invited user
         //await createNotification('Invitation to Join Group',userId, 'Group Invite', `You have been invited to join the group: ${group.name}`);//await sendEmail(userId, 'Invitation to Join Group', `You have been invited to join the group: ${group.name}`);
         await createNotification('Invitation to Join Group', 'Invite',  `You have been invited to join the group: ${IdeaPosted.headline}`, datameta);
-        await sendNotifi(userId, 'Invitation to Join Group',`You have been invited to join the group: ${group.name}`);
+        //await sendNotifi(userId, 'Invitation to Join Group',`You have been invited to join the group: ${group.name}`);
         const notificationMessage = "New Notification";
         const notificationStatus = "true";
             
@@ -203,7 +203,7 @@ export const requestToJoinGroup = async (req: Request, res: Response) => {
         //await sendEmail(group.admin, 'Request to Join Group', `User ${userId} has requested to join the group: ${group.name}`);
         //await createNotification('Request to Join Group',group.admin, 'Group Request', `User ${userId} has requested to join the group: ${group.name}`);
         await createNotification('Request to Join Group', 'Request',  `${user?.fname} ${user?.lname} has requested to join the group: ${IdeaPosted.headline}`,datameta);
-        sendNotifi(group.admin, 'Request to Join Group',`User ${userId} has requested to join the group: ${group.name}`);
+        //sendNotifi(group.admin, 'Request to Join Group',`User ${userId} has requested to join the group: ${group.name}`);
         const notificationMessage = "New Notification";
         const notificationStatus = "true";
             
@@ -264,7 +264,7 @@ export const respondToMembershipRequest = async (req: Request, res: Response) =>
         //await sendEmail(member.userId, 'Membership Request Update', `Your membership request to join the group: ${group.name} has been ${status}.`);
         // await createNotification('Membership Request Update',member.userId, 'Group Request', `Your membership request to join the group: ${group.name} has been ${status}.`);
         await createNotification('Membership Request Update','Response',  `Your membership request to join the group: ${IdeaPosted.headline}  group has been ${status}.`, datameta);
-        sendNotifi(member.userId, 'Membership Request Update',`Your membership request to join the group: ${group.name} has been ${status}.`);
+        //sendNotifi(member.userId, 'Membership Request Update',`Your membership request to join the group: ${group.name} has been ${status}.`);
         const notificationMessage = "New Notification";
         const notificationStatus = "true";
             
@@ -325,7 +325,7 @@ export const acceptGroupInvitation = async (req: Request, res: Response) => {
                 //await sendEmail(admin.id, 'New Member Joined', `${user?.email} has accepted the invitation to join the group: ${group.name}`);
                 //await createNotification('New Member Joined',admin, 'Group Request', `${user?.email} has accepted the invitation to join the group: ${group.name}`);
                 await createNotification('New Member Joined', 'Action',  `${user?.fname} ${user?.lname} has just ${status} the invitation to join the group: ${IdeaPosted.headline}`, datameta);
-                sendNotifi(admin.id, 'New Member Joined',`${user?.email} has accepted the invitation to join the group: ${group.name}`);
+                //sendNotifi(admin.id, 'New Member Joined',`${user?.email} has accepted the invitation to join the group: ${group.name}`);
                 const notificationMessage = "New Notification";
                 const notificationStatus = "true";
                     
@@ -454,7 +454,7 @@ export const suspendMember = async (req: Request, res: Response) => {
 
         // Send email notification to the user about the response
         //await sendEmail(member.userId, 'Membership Status Update', `Your membership Status in the group: ${group.name} has been ${status}.`);
-        await sendNotifi(member.userId, 'Membership Status Update',`Your membership Status in the group: ${group.name} has been ${status}.`);
+        //await sendNotifi(member.userId, 'Membership Status Update',`Your membership Status in the group: ${group.name} has been ${status}.`);
         
         res.status(200).json({ message: `Membership status updated to ${status} successfully`, member });
     } catch (error) {

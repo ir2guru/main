@@ -31,7 +31,7 @@ const sendNotifi = async (userId: string, title: string, body: string) => {
       }
   
       // Send notification
-      await sendNotification(token, { title, body });
+      //await sendNotification(token, { title, body });
       console.log('Notification sent successfully.');
     } catch (error) {
       console.error('Error sending notification:', error);
@@ -81,7 +81,7 @@ export const commentOnIdea = async (req: Request, res: Response) => {
         const notificationTitle = `${username.fname} Just Commented On ${IdeaPosted.headline}`;
         // await createNotification(notificationTitle, IdeaPosted.userId.toString(), 'Comment', ideaId.toString());
         //await createNotification('New Comment on your Idea',IdeaPosted.userId, 'Comment',  notificationTitle,'',ideaId,`${username?.fname} ${username?.lname}`, userId);
-        await sendNotifi(IdeaPosted.userId,`Your Idea Got A Comment`, notificationTitle,);
+        //await sendNotifi(IdeaPosted.userId,`Your Idea Got A Comment`, notificationTitle,);
         await createNotification('New Comment on your Idea', 'Comment', notificationTitle, datameta);
         notifyUser(userId, 'you have a new notification');
         const notificationMessage = "New Notification";
@@ -157,7 +157,7 @@ export const replyToComment = async (req: Request, res: Response) => {
         const notificationTitle = `${username?.fname} ${username?.lname} Just Replied Your Comment: ${CommentPosted.content} On ${IdeaPosted?.headline}`;
         //await createNotification(notificationTitle, repliedToUserId.toString(), 'Reply', IdeaId.toString());
         await createNotification('New Reply on your Comment','Reply',  notificationTitle, datameta);
-        await sendNotifi(repliedToUserId,`Your Idea Got A Reply`, notificationTitle,);
+        //await sendNotifi(repliedToUserId,`Your Idea Got A Reply`, notificationTitle,);
         const notificationMessage = "New Notification";
         const notificationStatus = "true";
             
