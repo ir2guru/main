@@ -714,16 +714,18 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
                 const commentCounts = await fetchCommentAndReplyCounts(idea.id);
                 const ideaLikeCount = await getLikeCountForIdea(idea.id);
                 let userHasLiked = false;
-                if (userId) {
-                    const user = await User.findOne({ _id: userId }).exec();
-                    if (user) {
-                        userHasLiked = await hasUserLikedIdea(user._id, idea._id);
+
+                // Check if userId is provided and valid
+                if (userId && userId !== '' && userId !== 'undefined' && userId !== 'null') {
+                    const foundUser = await User.findById(userId).exec();
+                    if (foundUser) {
+                        userHasLiked = await hasUserLikedIdea(foundUser._id, idea._id);
                     } else {
                         res.status(200).json({ message: 'User not found' });
                         return;
                     }
                 }
-                
+
                 return {
                     ...idea,
                     fname: user?.fname || '',
@@ -731,7 +733,7 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
                     ppicture: profile?.ppicture || '',
                     pow: profile?.pow,
                     position: profile?.position,
-                    hasliked : userHasLiked,
+                    hasliked: userHasLiked,
                     wordpm: wpm,
                     likeCount: ideaLikeCount,
                     count: commentCounts.totalAll
