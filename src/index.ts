@@ -6,6 +6,7 @@ import path from 'path';
 import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
+import NewsletterSubscriber from './models/newsletter.model';
 
 
 dotenv.config();
@@ -34,6 +35,22 @@ app.use('/api/groups', require('./routes/groupRoutes'));
 app.use('/api/comments', require('./routes/commentRoutes'));
 // Serve static files from the "uploads" directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.post('/subscribe', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).send('Email is required');
+  }
+
+  try {
+    const subscriber = new NewsletterSubscriber({ email });
+    await subscriber.save();
+    res.status(201).send('Subscriber added');
+  } catch (err) {
+    res.status(500).send('Error adding subscriber');
+  }
+});
 
 app.get('/src/uploads/:filename', (req, res) => {
   const filename = req.params.filename;

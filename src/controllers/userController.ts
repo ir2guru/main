@@ -163,9 +163,7 @@ export const reguser = async (req: Request, res: Response) => {
         </div>
         <div class="frame-wrapper">
           <div class="rectangle-parent">
-            <img class="frame-child" alt="" src="https://duducomics.com/public/rectangle-1@2x.png" />
-
-            <div class="rectangle-parent">
+             <div class="rectangle-parent">
               <div class="hi-seun-parent">
                 <div class="hi-seun">Hi, ${email}</div>
                 <div class="welcome-aboard-to-container">
@@ -200,6 +198,7 @@ export const reguser = async (req: Request, res: Response) => {
               <a href="https://ideas-for-africa-deploy.vercel.app/auth/verify?userId=${user._id}&vcode=${vcode}" class="button">
                             <div class="label">Verify Account</div>
               </a>
+               <img class="frame-child" alt="" src="https://duducomics.com/public/rectangle-1@2x.png" />
             </div>
           </div>
         </div>
