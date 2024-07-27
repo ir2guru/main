@@ -1,5 +1,5 @@
 import express from 'express';
-import { createGroup, inviteMember, requestToJoinGroup, respondToMembershipRequest, acceptGroupInvitation, getGroupMembers, suspendMember, fetchMessagesByRoomID, fetchGroupsByUser } from '../controllers/groupController'; // Adjust path as needed
+import { createGroup, getGroupById, inviteMember, requestToJoinGroup, respondToMembershipRequest, acceptGroupInvitation, getGroupMembers, suspendMember, fetchMessagesByRoomID, fetchGroupsByUser } from '../controllers/groupController'; // Adjust path as needed
 
 const router = express.Router();
 
@@ -12,6 +12,7 @@ router.get('/groups/:groupId/members', getGroupMembers);// New route for admin r
 router.patch('/groups/suspend', suspendMember); // Route to suspend a member by memberId
 router.get('/messages/:roomID', fetchMessagesByRoomID);
 router.get('/user/:userId', fetchGroupsByUser);
+router.get('/groups/:groupId', getGroupById);
 
 
 module.exports = router;

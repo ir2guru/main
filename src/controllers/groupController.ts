@@ -536,3 +536,31 @@ export const fetchGroupsByUser = async (req: Request, res: Response): Promise<vo
         res.status(500).json({ message: 'Failed to fetch groups' });
     }
 };
+
+export const getGroupById = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { groupId } = req.params;
+
+        // Convert groupId to mongoose ObjectId if necessary
+        if (!mongoose.Types.ObjectId.isValid(groupId)) {
+            res.status(400).json({ message: 'Invalid group ID format' });
+            return;
+        }
+
+        // Find the group by its _id
+        const group = await Group.findById(groupId).exec();
+
+        if (!group) {
+            res.status(404).json({ message: 'Group not found' });
+            return;
+        }
+
+        res.status(200).json({
+            message: 'Group fetched successfully',
+            group,
+        });
+    } catch (error) {
+        console.error(`Error fetching group:`, error);
+        res.status(500).json({ message: 'Could not fetch group details' });
+    }
+};
