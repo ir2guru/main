@@ -703,7 +703,7 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
         }
 
         // Fetch the ideas, populate with the number of likes, and thumb paths
-        const ideasWithDetails = await Idea.aggregate(pipeline);
+        const ideasWithDetails = await Idea.aggregate(pipeline).sort({createdAt: -1});
 
         // Loop through each idea and fetch user details
         const ideasWithUserDetails = await Promise.all(
@@ -713,6 +713,7 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
                 const wpm = calculateReadingTime(idea.body);
                 const commentCounts = await fetchCommentAndReplyCounts(idea.id);
                 const ideaLikeCount = await getLikeCountForIdea(idea.id);
+                const viewCount = await IdeaView.countDocuments({ideaId: idea.id});
                 let userHasLiked = false;
 
                 // Check if userId is provided and valid
@@ -736,7 +737,8 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
                     hasliked: userHasLiked,
                     wordpm: wpm,
                     likeCount: ideaLikeCount,
-                    count: commentCounts.totalAll
+                    count: commentCounts.totalAll,
+                    viewCount: viewCount
                 };
             })
         );
@@ -815,7 +817,7 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
         }
 
         // Fetch the ideas, populate with the number of views, and thumb paths
-        const ideasWithDetails = await Idea.aggregate(pipeline);
+        const ideasWithDetails = await Idea.aggregate(pipeline).sort({ createdAt: -1 });
 
         // Loop through each idea and fetch user details
         const ideasWithUserDetails = await Promise.all(
@@ -825,6 +827,7 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
                 const wpm = calculateReadingTime(idea.body);
                 const commentCounts = await fetchCommentAndReplyCounts(idea.id);
                 const ideaLikeCount = await getLikeCountForIdea(idea.id);
+                const viewCount = await IdeaView.countDocuments({ideaId: idea.id});
 
                 let userHasLiked = false;
                 if (userId) {
@@ -847,7 +850,8 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
                     hasliked: userHasLiked,
                     wordpm: wpm,
                     likeCount: ideaLikeCount,
-                    count: commentCounts.totalAll
+                    count: commentCounts.totalAll,
+                    viewCount: viewCount
                 };
             })
         );
@@ -873,7 +877,9 @@ export const fetchModifiedIdeasByUser = async (req: Request, res: Response): Pro
         }
 
         // Fetch modified ideas created by the user
-        const modifiedIdeas = await ModifiedIdea.find({ userId }).exec();
+        const modifiedIdeas = await ModifiedIdea.find({ userId })
+        .sort({ createdAt: -1 }) // Sort by createdAt in descending order (most recent first)
+        .exec();
 
         if (!modifiedIdeas.length) {
             res.status(200).json({ message: 'No modified ideas found for this user' });
