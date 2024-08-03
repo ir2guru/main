@@ -18,6 +18,7 @@ export interface IMetadata extends Document {
     memberId: string;
     iniciatorId?: string;
     username?: string;
+    ideaheadline?: string;
     typeId: string;
 }
 

@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { loginUser, reguser, verifyUserAccount, updateUserDetails, verifyUser, fetchUserProfile, changePassword, fetchUnreadNotificationsByUserId, checkAndSetFcmToken, checkFcmToken, ReturnUserToken, fetchModifiedIdeasByIdeaId, fetchModifiedIdeasByUserId } from '../controllers/userController';
+import { loginUser, reguser, verifyUserAccount, updateUserDetails, verifyUser, fetchUserProfile, changePassword, fetchUnreadNotificationsByUserId, markNotificationAsRead, checkAndSetFcmToken, checkFcmToken, ReturnUserToken, fetchModifiedIdeasByIdeaId, fetchModifiedIdeasByUserId } from '../controllers/userController';
 import { verifyToken } from '../middleware/verifyToken';
 import { checkSession } from '../controllers/checkSession';
 import { getIdeaWithDocuments, postIdea, modifyIdea, fetchIdeaByStatus, fetchIdeas, likeIdea, fetchActiveIdeasByCategory, fetchGroupsByIdeaId, getModifiedIdeaWithDocuments, fetchTopIdeasByLikes, fetchTopIdeasByViews, fetchModifiedIdeasByUser } from '../controllers/ideaController';
@@ -81,6 +81,7 @@ router.get('/liked/ideas/', fetchTopIdeasByLikes);
 router.get('/viewed/ideas/', fetchTopIdeasByViews);
 router.get('/modifiedIdeas/user/:userId', fetchModifiedIdeasByUser);
 router.get('/replies/comment/:commentId', fetchRepliesByCommentId);
+router.patch('/notifications/:notificationId/read', markNotificationAsRead);
 
 
 // router.post('/submit', handleFormSubmission);

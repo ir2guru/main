@@ -74,6 +74,7 @@ export const commentOnIdea = async (req: Request, res: Response) => {
             memberId: '',                // Assuming memberId is the same as userId
             iniciatorId: userId, // Replace with actual value
             username: `${username?.fname} ${username?.lname}`,         // Assuming username object has fname property
+            ideaheadline: IdeaPosted.headline,
             typeId: ideaId       // Assuming IdeaPosted object has headline property
         });
 
@@ -91,9 +92,17 @@ export const commentOnIdea = async (req: Request, res: Response) => {
                 message: notificationMessage,
                 status: notificationStatus
             };
-            
+            console.log('Sending notification:', newNotification);
+            console.log('To user ID:', IdeaPosted.userId);
+
             // Assuming `IdeaUser` is the ID of the user to be notified
+
+try {
             io.to(IdeaPosted.userId).emit('newNotification', newNotification);
+            console.log('Notification sent successfully');
+        } catch (error) {
+            console.error('Error sending notification:', error);
+        }
         //console.log("LLLLF");
 
         res.status(201).json({ message: 'Comment posted successfully', comment: newComment });
@@ -151,6 +160,7 @@ export const replyToComment = async (req: Request, res: Response) => {
             memberId: '',                // Assuming memberId is the same as userId
             iniciatorId: userId, // Replace with actual value
             username: `${username?.fname} ${username?.lname}`,         // Assuming username object has fname property
+            ideaheadline: IdeaPosted.headline,
             typeId: IdeaId       // Assuming IdeaPosted object has headline property
         });
 

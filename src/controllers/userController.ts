@@ -693,7 +693,7 @@ export const fetchUnreadNotificationsByUserId = async (req: Request, res: Respon
 
     try {
         // Fetch notifications where userId matches and status is 'unread'
-        const notifications = await Notification.find({ 'action.userId': userId, status: 'unread' });
+        const notifications = await Notification.find({ 'action.userId': userId, status: 'unread' }).sort({time: -1});
 
         if (notifications.length === 0) {
             return res.status(404).json({ message: `No unread notifications found for userId: ${userId}`,notifications });
@@ -707,6 +707,44 @@ export const fetchUnreadNotificationsByUserId = async (req: Request, res: Respon
         console.error('Error fetching notifications by userId:', error);
         res.status(500).json({ message: 'Failed to fetch notifications' });
     }
+};
+
+export const markNotificationAsRead = async (req: Request, res: Response): Promise<void> => {
+  try {
+      const { notificationId } = req.params;
+
+      // Validate that notificationId is provided
+      if (!notificationId || typeof notificationId !== 'string') {
+          res.status(400).json({ message: 'Notification ID is required and must be a string' });
+          return;
+      }
+
+      // Find the notification by its ID
+      const notification = await Notification.findById(notificationId).exec();
+
+      if (!notification) {
+          res.status(404).json({ message: 'Notification not found' });
+          return;
+      }
+
+      // Check if the notification status is already 'read'
+      if (notification.status === 'read') {
+          res.status(200).json({ message: 'Notification is already marked as read' });
+          return;
+      }
+
+      // Update the notification status to 'read'
+      notification.status = 'read';
+      await notification.save();
+
+      res.status(200).json({
+          message: 'Notification status updated to read',
+          notification
+      });
+  } catch (error) {
+      console.error('Error updating notification status:', error);
+      res.status(500).json({ message: 'Failed to update notification status' });
+  }
 };
 
 export const checkAndSetFcmToken = async (req: Request, res: Response) => {

@@ -121,9 +121,10 @@ export const inviteMember = async (req: Request, res: Response) => {
         const datameta = new Metadata({
             groupId: groupId,         // Replace with actual values
             userId: userId,                  // Assuming IdeaUser is the userId
-            memberId: '',                // Assuming memberId is the same as userId
+            memberId: member._id,                // Assuming memberId is the same as userId
             iniciatorId: invitedBy, // Replace with actual value
             username: `${user?.fname} ${user?.lname}`,         // Assuming username object has fname property
+            ideaheadline: IdeaPosted.headline,
             typeId: ''       // Assuming IdeaPosted object has headline property
         });
 
@@ -195,6 +196,7 @@ export const requestToJoinGroup = async (req: Request, res: Response) => {
             memberId: memberdata._id,                // Assuming memberId is the same as userId
             iniciatorId: userId, // Replace with actual value
             username: `${user?.fname} ${user?.lname}`,         // Assuming username object has fname property
+            ideaheadline: IdeaPosted.headline,
             typeId: ''       // Assuming IdeaPosted object has headline property
         });
 
@@ -253,9 +255,10 @@ export const respondToMembershipRequest = async (req: Request, res: Response) =>
         const datameta = new Metadata({
             groupId: member.groupId,         // Replace with actual values
             userId: member.userId,                  // Assuming IdeaUser is the userId
-            memberId: '',                // Assuming memberId is the same as userId
+            memberId: member._id,                // Assuming memberId is the same as userId
             iniciatorId: userId, // Replace with actual value
             username: `${user?.fname} ${user?.lname}`,         // Assuming username object has fname property
+            ideaheadline: IdeaPosted.headline,
             typeId: ''       // Assuming IdeaPosted object has headline property
         });
 
@@ -316,9 +319,10 @@ export const acceptGroupInvitation = async (req: Request, res: Response) => {
                 const datameta = new Metadata({
                     groupId: groupId,         // Replace with actual values
                     userId: admin,                  // Assuming IdeaUser is the userId
-                    memberId: '',                // Assuming memberId is the same as userId
+                    memberId: member._id,                // Assuming memberId is the same as userId
                     iniciatorId: userId, // Replace with actual value
                     username: `${user?.fname} ${user?.lname}`,         // Assuming username object has fname property
+                    ideaheadline: IdeaPosted.headline,
                     typeId: ''       // Assuming IdeaPosted object has headline property
                 });
                 
