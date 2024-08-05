@@ -125,6 +125,7 @@ export const inviteMember = async (req: Request, res: Response) => {
             iniciatorId: invitedBy, // Replace with actual value
             username: `${user?.fname} ${user?.lname}`,         // Assuming username object has fname property
             ideaheadline: IdeaPosted.headline,
+            IdeaId:IdeaPosted._id,
             typeId: ''       // Assuming IdeaPosted object has headline property
         });
 
@@ -197,6 +198,7 @@ export const requestToJoinGroup = async (req: Request, res: Response) => {
             iniciatorId: userId, // Replace with actual value
             username: `${user?.fname} ${user?.lname}`,         // Assuming username object has fname property
             ideaheadline: IdeaPosted.headline,
+            IdeaId:IdeaPosted._id,
             typeId: ''       // Assuming IdeaPosted object has headline property
         });
 
@@ -259,6 +261,7 @@ export const respondToMembershipRequest = async (req: Request, res: Response) =>
             iniciatorId: userId, // Replace with actual value
             username: `${user?.fname} ${user?.lname}`,         // Assuming username object has fname property
             ideaheadline: IdeaPosted.headline,
+            IdeaId:IdeaPosted._id,
             typeId: ''       // Assuming IdeaPosted object has headline property
         });
 
@@ -323,6 +326,7 @@ export const acceptGroupInvitation = async (req: Request, res: Response) => {
                     iniciatorId: userId, // Replace with actual value
                     username: `${user?.fname} ${user?.lname}`,         // Assuming username object has fname property
                     ideaheadline: IdeaPosted.headline,
+                    IdeaId:IdeaPosted._id,
                     typeId: ''       // Assuming IdeaPosted object has headline property
                 });
                 
