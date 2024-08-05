@@ -106,6 +106,8 @@ export const inviteMember = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Idea not found' });
         }
 
+        console.log(IdeaPosted._id);
+
         // Create the member invitation
         const member = new Member({
             groupId,

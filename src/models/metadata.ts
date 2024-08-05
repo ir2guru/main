@@ -8,8 +8,9 @@ export const metadataSchema = new Schema({
     memberId: { type: String, required: true },
     iniciatorId: { type: String, required: false },
     username: { type: String, required: false },
-    typeStatus: { type: String, required: false },
+    ideaheadline: { type: String, required: false },
     IdeaId: { type: String, required: false },
+    typeStatus: { type: String, required: false },
     typeId: { type: String, required: true }
 });
 
@@ -23,7 +24,6 @@ export interface IMetadata extends Document {
     ideaheadline?: string;
     IdeaId?: string;
     typeStatus?: string;
-
     typeId: string;
 }
 

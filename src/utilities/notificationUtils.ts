@@ -26,7 +26,9 @@ export const createNotification = async (
         });
 
         await newNotification.save();
+        console.log(newNotification);
         return newNotification;
+       
     } catch (error) {
         console.error('Error creating notification:', error);
         throw new Error('Failed to create notification');

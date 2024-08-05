@@ -7,6 +7,9 @@ export const metadataSchema = new Schema({
     memberId: { type: String },
     iniciatorId: { type: String },
     username: { type: String },
+    ideaheadline: { type: String},
+    IdeaId: { type: String},
+    typeStatus: { type: String},
     typeId: { type: String }
 });
 
