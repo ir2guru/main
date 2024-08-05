@@ -565,9 +565,18 @@ export const getGroupById = async (req: Request, res: Response): Promise<void> =
             return;
         }
 
+        const user = await User.findById(group.admin).exec();
+        const profile = await Profile.findOne({userId: group.admin}).exec();
+        const idea = await Idea.findById(group.ideaId).exec();
+
         res.status(200).json({
             message: 'Group fetched successfully',
             group,
+            fname: user?.fname,
+            lname: user?.lname,
+            profilepic: profile?.ppicture,
+            ideaheadline: idea?.headline,
+
         });
     } catch (error) {
         console.error(`Error fetching group:`, error);
