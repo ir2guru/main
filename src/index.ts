@@ -46,13 +46,24 @@ app.post('/subscribe', async (req, res) => {
   }
 
   try {
+    // Check if the email already exists in the database
+    const existingSubscriber = await NewsletterSubscriber.findOne({ email });
+    
+    if (existingSubscriber) {
+      // Email is already subscribed
+      return res.status(200).send('Email is already subscribed');
+    }
+
+    // Create a new subscriber if email does not exist
     const subscriber = new NewsletterSubscriber({ email });
     await subscriber.save();
     res.status(201).send('Subscriber added');
   } catch (err) {
+    console.error(err); // Log the error for debugging purposes
     res.status(500).send('Error adding subscriber');
   }
 });
+
 
 app.get('/src/uploads/:filename', (req, res) => {
   const filename = req.params.filename;
