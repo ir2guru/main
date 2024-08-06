@@ -575,6 +575,8 @@ export const getGroupById = async (req: Request, res: Response): Promise<void> =
             fname: user?.fname,
             lname: user?.lname,
             profilepic: profile?.ppicture,
+            pow: profile?.pow,
+            position: profile?.position,
             ideaheadline: idea?.headline,
 
         });
