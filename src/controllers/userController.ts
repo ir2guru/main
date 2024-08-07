@@ -89,6 +89,10 @@ export const loginUser = async (req: Request, res: Response) => {
             return res.status(404).json({ message: "User not found" });
         }
 
+        if (!password) {
+          return res.status(404).json({ message: "password not found" });
+      }
+
         if (user.status === 'inactive') {
             return res.status(403).json({ message: "User account is inactive. Please verify your account." });
         }

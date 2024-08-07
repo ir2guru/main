@@ -7,34 +7,61 @@ import randomstring from 'randomstring';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID!);
 
+function generatePassword(length = 9) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        password += characters[randomIndex];
+    }
+    return password;
+}
+
+
+
 export const googleLogin = async (req: Request, res: Response) => {
     const { fname, lname, email } = req.body;
-    if (!fname || lname || email) {
-        return res.status(400).json({ message: 'missing credentials' });
+
+    if (!fname || !lname || !email) {
+        return res.status(400).json({ message: 'Missing credentials' });
     }
+
     try {
-        // const ticket = await googleClient.verifyIdToken({
-        //     idToken,
-        //     audience: process.env.GOOGLE_CLIENT_ID!
-        // });
-        // const payload = ticket.getPayload();
-        const emailuse = email;
-        const fnameUse = fname || '';
-        const lnameUse = lname || '';
+        // Ensure the email is in a valid format
+        const emailUse = email.trim().toLowerCase();
+        const fnameUse = fname.trim() || '';
+        const lnameUse = lname.trim() || '';
 
-        let user = await User.findOne({ email });
-        if (!user) {
-            user = new User({ email, password: '', fname, lname, status: 'active' });
+        // Check if the user already exists
+        let user = await User.findOne({ email: emailUse });
+
+        if (user) {
+            // If user exists, return a message indicating so
+            return res.status(200).json({
+                message: 'User already exists',
+            });
+        } else {
+            // Create a new user if not found
+            user = new User({
+                email: emailUse,
+                password: '',  // Google OAuth typically doesn't require a password
+                fname: fnameUse,
+                lname: lnameUse,
+                status: 'active',
+            });
             await user.save();
-        }
 
-        const token = generateToken(user._id.toString());
-        res.status(200).json({
-            message: 'User logged in successfully',
-            token
-        });
+            // Generate a token for the newly created user
+            const token = generateToken(user._id.toString());
+
+            // Respond with success and token
+            return res.status(201).json({
+                message: 'User created successfully',
+                token,
+            });
+        }
     } catch (error) {
-        console.error('Google OAuth error:', error);
+        console.error('Error during login:', error);
         res.status(500).json({ message: 'Failed to authenticate' });
     }
 };

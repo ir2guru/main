@@ -13,7 +13,7 @@ export interface IUser extends Document {
 
 const userSchema: Schema = new Schema({
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    password: { type: String, required: false },
     fname:{type: String, required: true},
     lname:{type: String, required: true},
     status: { type: String, default: 'inactive' }, // Default status is 'inactive'
