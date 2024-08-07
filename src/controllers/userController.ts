@@ -14,6 +14,7 @@ import Thumb from '../models/thumb';
 import { fetchCommentAndReplyCounts } from '../middleware/CommentCounter';
 import { getLikeCountForIdea } from '../middleware/LikeCount';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { doesUserExistByEmail } from '../utilities/userService';
 
 // Function to send email
 const sendEmail = async (email: string, subject: string, htmlContent: string) => {
@@ -920,5 +921,22 @@ export const fetchModifiedIdeasByUserId = async (req: Request, res: Response) =>
   } catch (error) {
       console.error('Error fetching modified ideas by ideaId:', error);
       res.status(500).json({ message: 'Failed to fetch modified ideas' });
+  }
+};
+
+export const checkUserExistence = async (req: Request, res: Response) => {
+  const { email } = req.query;
+
+  // Ensure email is provided
+  if (typeof email !== 'string') {
+      return res.status(400).json({ message: 'Invalid email parameter' });
+  }
+
+  try {
+      const exists = await doesUserExistByEmail(email);
+      res.status(200).json({ exists });
+  } catch (error) {
+      console.error('Error checking user existence:', error);
+      res.status(500).json({ message: 'Failed to check user existence' });
   }
 };

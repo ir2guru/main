@@ -8,19 +8,19 @@ import randomstring from 'randomstring';
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID!);
 
 export const googleLogin = async (req: Request, res: Response) => {
-    const { idToken } = req.body;
-    if (!idToken) {
-        return res.status(400).json({ message: 'ID token is required' });
+    const { fname, lname, email } = req.body;
+    if (!fname || lname || email) {
+        return res.status(400).json({ message: 'missing credentials' });
     }
     try {
-        const ticket = await googleClient.verifyIdToken({
-            idToken,
-            audience: process.env.GOOGLE_CLIENT_ID!
-        });
-        const payload = ticket.getPayload();
-        const email = payload?.email;
-        const fname = payload?.given_name || '';
-        const lname = payload?.family_name || '';
+        // const ticket = await googleClient.verifyIdToken({
+        //     idToken,
+        //     audience: process.env.GOOGLE_CLIENT_ID!
+        // });
+        // const payload = ticket.getPayload();
+        const emailuse = email;
+        const fnameUse = fname || '';
+        const lnameUse = lname || '';
 
         let user = await User.findOne({ email });
         if (!user) {

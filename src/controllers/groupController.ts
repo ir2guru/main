@@ -86,7 +86,7 @@ export const createGroup = async (req: Request, res: Response) => {
 
 // Function to invite a member
 export const inviteMember = async (req: Request, res: Response) => {
-    const { groupId, userId, invitedBy } = req.body;
+    const { groupId, email, invitedBy } = req.body;
 
     try {
         // Ensure the group exists
@@ -99,14 +99,21 @@ export const inviteMember = async (req: Request, res: Response) => {
         if (group.admin !== invitedBy) {
             return res.status(403).json({ message: 'Only the admin can invite members' });
         }
-        
+
+        // Fetch the userId from the email
+        const user = await User.findOne({ email }).select('_id fname lname');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const userId = user._id;
+
+        // Ensure the idea exists
         const IdeaPosted = await Idea.findById(group.ideaId);
         if (!IdeaPosted) {
             console.error('Idea not found with ID:', group.ideaId);
             return res.status(404).json({ message: 'Idea not found' });
         }
-
-        console.log(IdeaPosted._id);
 
         // Create the member invitation
         const member = new Member({
@@ -118,33 +125,31 @@ export const inviteMember = async (req: Request, res: Response) => {
 
         await member.save();
 
-        const user = await User.findById(invitedBy).select('fname lname');
-
         const datameta = new Metadata({
             groupId: groupId,         // Replace with actual values
-            userId: userId,                  // Assuming IdeaUser is the userId
+            userId: userId,                  // User ID from the User model
             memberId: member._id,                // Assuming memberId is the same as userId
             iniciatorId: invitedBy, // Replace with actual value
-            username: `${user?.fname} ${user?.lname}`,         // Assuming username object has fname property
+            username: `${user.fname} ${user.lname}`, // User's full name
             ideaheadline: IdeaPosted.headline,
-            IdeaId:IdeaPosted._id,
+            IdeaId: IdeaPosted._id,
             typeId: ''       // Assuming IdeaPosted object has headline property
         });
 
         // Send email notification to the invited user
-        //await createNotification('Invitation to Join Group',userId, 'Group Invite', `You have been invited to join the group: ${group.name}`);//await sendEmail(userId, 'Invitation to Join Group', `You have been invited to join the group: ${group.name}`);
-        await createNotification('Invitation to Join Group', 'Invite',  `You have been invited to join the group: ${IdeaPosted.headline}`, datameta);
-        //await sendNotifi(userId, 'Invitation to Join Group',`You have been invited to join the group: ${group.name}`);
+        await createNotification('Invitation to Join Group', 'Invite', `You have been invited to join the group: ${IdeaPosted.headline}`, datameta);
+
+        // Notify via WebSocket
         const notificationMessage = "New Notification";
         const notificationStatus = "true";
             
-            const newNotification = {
-                message: notificationMessage,
-                status: notificationStatus
-            };
+        const newNotification = {
+            message: notificationMessage,
+            status: notificationStatus
+        };
             
-            // Assuming `IdeaUser` is the ID of the user to be notified
-            io.to(userId).emit('newNotification', newNotification);
+        io.to(userId.toString()).emit('newNotification', newNotification);
+        
         res.status(201).json({ message: 'Member invited successfully', member });
     } catch (error) {
         console.error('Error inviting member:', error);
