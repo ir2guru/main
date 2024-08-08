@@ -43,6 +43,7 @@ export const googleLogin = async (req: Request, res: Response) => {
             return res.status(201).json({
                 message: 'User Already Exist',
                 token,
+                userId: user._id
             });
         } else {
             // Create a new user if not found
@@ -58,10 +59,13 @@ export const googleLogin = async (req: Request, res: Response) => {
             // Generate a token for the newly created user
             const token = generateToken(user._id.toString());
 
+            console.log(user._id);
+
             // Respond with success and token
             return res.status(201).json({
                 message: 'User created successfully',
                 token,
+                userId: user._id
             });
         }
     } catch (error) {
