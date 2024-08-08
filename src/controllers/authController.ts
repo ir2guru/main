@@ -37,8 +37,12 @@ export const googleLogin = async (req: Request, res: Response) => {
 
         if (user) {
             // If user exists, return a message indicating so
-            return res.status(200).json({
-                message: 'User already exists',
+            const token = generateToken(user._id.toString());
+
+            // Respond with success and token
+            return res.status(201).json({
+                message: 'User Already Exist',
+                token,
             });
         } else {
             // Create a new user if not found
