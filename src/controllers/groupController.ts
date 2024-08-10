@@ -12,6 +12,7 @@ import Message from '../models/Messages';
 import Metadata, { IMetadata } from '../models/metadata';
 import { io } from '..';
 import Thumb from '../models/thumb';
+import { generateInviteMessage } from '../utils/emails';
 
 // Function to create a group
 
@@ -75,7 +76,7 @@ export const createGroup = async (req: Request, res: Response) => {
         await member.save();
 
         // Send email notification to the admin
-        //await sendEmail(userId, 'Group Created Successfully', `You have successfully created the group: ${name}`);
+        await sendEmail(userId, 'Group Created Successfully', `You have successfully created the group: ${name}`);
 
         res.status(201).json({ message: 'Group created successfully', group });
     } catch (error) {
@@ -135,6 +136,16 @@ export const inviteMember = async (req: Request, res: Response) => {
             IdeaId: IdeaPosted._id,
             typeId: ''       // Assuming IdeaPosted object has headline property
         });
+
+        const ruserId = userId;
+        const rgroupId = groupId;
+        const memberId = member._id;
+        const groupName = group.name;
+        const inviteUrl = 'http://ideas-for-africa-deploy.vercel.app/accept-invite';
+
+        const emailContent = generateInviteMessage(ruserId, rgroupId, memberId, groupName, inviteUrl);
+
+        await sendEmail(userId, 'Group Invite', ``, emailContent);
 
         // Send email notification to the invited user
         await createNotification('Invitation to Join Group', 'Invite', `You have been invited to join the group: ${IdeaPosted.headline}`, datameta);
@@ -211,7 +222,7 @@ export const requestToJoinGroup = async (req: Request, res: Response) => {
 
 
         // Send email notification to the group admin
-        //await sendEmail(group.admin, 'Request to Join Group', `User ${userId} has requested to join the group: ${group.name}`);
+        await sendEmail(group.admin, 'Request to Join Group', `User ${userId} has requested to join the group: ${group.name}`);
         //await createNotification('Request to Join Group',group.admin, 'Group Request', `User ${userId} has requested to join the group: ${group.name}`);
         await createNotification('Request to Join Group', 'Request',  `${user?.fname} ${user?.lname} has requested to join the group: ${IdeaPosted.headline}`,datameta);
         //sendNotifi(group.admin, 'Request to Join Group',`User ${userId} has requested to join the group: ${group.name}`);
@@ -274,7 +285,7 @@ export const respondToMembershipRequest = async (req: Request, res: Response) =>
 
 
         // Send email notification to the user about the response
-        //await sendEmail(member.userId, 'Membership Request Update', `Your membership request to join the group: ${group.name} has been ${status}.`);
+        await sendEmail(member.userId, 'Membership Request Update', `Your membership request to join the group: ${group.name} has been ${status}.`);
         // await createNotification('Membership Request Update',member.userId, 'Group Request', `Your membership request to join the group: ${group.name} has been ${status}.`);
         await createNotification('Membership Request Update','Response',  `Your membership request to join the group: ${IdeaPosted.headline}  group has been ${status}.`, datameta);
         //sendNotifi(member.userId, 'Membership Request Update',`Your membership request to join the group: ${group.name} has been ${status}.`);
@@ -306,7 +317,7 @@ export const acceptGroupInvitation = async (req: Request, res: Response) => {
         }
 
         member.status = status;
-        member.joinedAt = new Date();
+        member.joinedAt = status === 'accepted' ? new Date() : member.joinedAt;
         await member.save();
 
         // Fetch user and group details
@@ -314,50 +325,59 @@ export const acceptGroupInvitation = async (req: Request, res: Response) => {
         const group = await Group.findById(groupId);
 
         if (userId && group) {
-            // Send email notification to the user
-            await sendEmail(userId, 'Group Invitation Accepted', `Your request to Join ${group.name} was ${status}`);
+            if (status === 'accepted') {
+                // Send email notification to the user
+                await sendEmail(userId, 'Group Invitation Accepted', `Your request to join ${group.name} was ${status}`);
 
-            const IdeaPosted = await Idea.findById(group.ideaId);
-            if (!IdeaPosted) {
-                console.error('Idea not found with ID:', group.ideaId);
-                return res.status(404).json({ message: 'Idea not found' });
-            }
-            // Optionally, send email notification to the group admin
-            const admin = await User.findById(group.admin);
-            if (admin) {
+                const IdeaPosted = await Idea.findById(group.ideaId);
+                if (!IdeaPosted) {
+                    console.error('Idea not found with ID:', group.ideaId);
+                    return res.status(404).json({ message: 'Idea not found' });
+                }
 
-                const datameta = new Metadata({
-                    groupId: groupId,         // Replace with actual values
-                    userId: admin,                  // Assuming IdeaUser is the userId
-                    memberId: member._id,                // Assuming memberId is the same as userId
-                    iniciatorId: userId, // Replace with actual value
-                    username: `${user?.fname} ${user?.lname}`,         // Assuming username object has fname property
-                    ideaheadline: IdeaPosted.headline,
-                    IdeaId:IdeaPosted._id,
-                    typeId: ''       // Assuming IdeaPosted object has headline property
-                });
-                
-                //await sendEmail(admin.id, 'New Member Joined', `${user?.email} has accepted the invitation to join the group: ${group.name}`);
-                //await createNotification('New Member Joined',admin, 'Group Request', `${user?.email} has accepted the invitation to join the group: ${group.name}`);
-                await createNotification('New Member Joined', 'Action',  `${user?.fname} ${user?.lname} has just ${status} the invitation to join the group: ${IdeaPosted.headline}`, datameta);
-                //sendNotifi(admin.id, 'New Member Joined',`${user?.email} has accepted the invitation to join the group: ${group.name}`);
-                const notificationMessage = "New Notification";
-                const notificationStatus = "true";
-                    
+                // Optionally, send email notification to the group admin
+                const admin = await User.findById(group.admin);
+                if (admin) {
+                    const datameta = new Metadata({
+                        groupId: groupId,
+                        userId: admin.id,
+                        memberId: member._id,
+                        iniciatorId: userId,
+                        username: `${user?.fname} ${user?.lname}`,
+                        ideaheadline: IdeaPosted.headline,
+                        IdeaId: IdeaPosted._id,
+                        typeId: ''
+                    });
+
+                    await createNotification('New Member Joined', 'Action', `${user?.fname} ${user?.lname} has just ${status} the invitation to join the group: ${IdeaPosted.headline}`, datameta);
+                    await sendNotifi(admin.id, 'New Member Joined', `${user?.email} has accepted the invitation to join the group: ${group.name}`);
+
+                    const notificationMessage = "New Notification";
+                    const notificationStatus = "true";
+
                     const newNotification = {
                         message: notificationMessage,
                         status: notificationStatus
                     };
-                    
-                    // Assuming `IdeaUser` is the ID of the user to be notified
+
                     io.to(admin.id).emit('newNotification', newNotification);
+                }
+            } else if (status === 'declined') {
+                // Send email notification to the user
+                await sendEmail(userId, 'Group Invitation Declined', `Your request to join ${group.name} was ${status}`);
+
+                // Optionally, notify the group admin about the declined invitation
+                const admin = await User.findById(group.admin);
+                if (admin) {
+                    await sendNotifi(admin.id, 'Invitation Declined', `${user?.email} has declined the invitation to join the group: ${group.name}`);
+                }
             }
         }
 
-        res.status(200).json({ message: 'Invitation accepted successfully' });
+        res.status(200).json({ message: `Invitation ${status} successfully` });
     } catch (error) {
-        console.error('Error accepting invitation:', error);
-        res.status(500).json({ message: 'Failed to accept invitation' });
+        console.error('Error handling invitation:', error);
+        res.status(500).json({ message: 'Failed to handle invitation' });
     }
 };
 
