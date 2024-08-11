@@ -439,7 +439,7 @@ export const getGroupMembers = async (req: Request, res: Response) => {
     const { groupId } = req.params;
 
     try {
-        const members = await Member.find({ groupId });
+        const members = await Member.find({ groupId, status:'accepted'});
 
         // Use Promise.all to handle asynchronous operations in parallel
         const membersWithProfiles = await Promise.all(members.map(async member => {
