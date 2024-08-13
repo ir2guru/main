@@ -8,16 +8,20 @@ export interface IUser extends Document {
     lname: string;
     status: string; // Status field
     vcode: string; // Verification code field
+    createdAt: Date; // Creation date
+    updatedAt: Date; // Last updated date
     comparePassword: (candidatePassword: string) => Promise<boolean>;
 }
 
 const userSchema: Schema = new Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: false },
-    fname:{type: String, required: true},
-    lname:{type: String, required: true},
+    fname: { type: String, required: true },
+    lname: { type: String, required: true },
     status: { type: String, default: 'inactive' }, // Default status is 'inactive'
     vcode: { type: String, default: '' } // Default verification code is empty
+}, {
+    timestamps: true // Automatically creates `createdAt` and `updatedAt` fields
 });
 
 // Pre-save hook to hash the password

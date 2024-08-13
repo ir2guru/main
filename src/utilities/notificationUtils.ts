@@ -26,7 +26,7 @@ export const createNotification = async (
         });
 
         await newNotification.save();
-        console.log(newNotification);
+        //console.log(newNotification);
         return newNotification;
        
     } catch (error) {

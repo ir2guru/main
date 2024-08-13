@@ -57,10 +57,10 @@ app.post('/subscribe', async (req, res) => {
     // Create a new subscriber if email does not exist
     const subscriber = new NewsletterSubscriber({ email });
     await subscriber.save();
-    res.status(201).send('Subscriber added');
+    res.status(201).json({message:'Subscriber added'});
   } catch (err) {
     console.error(err); // Log the error for debugging purposes
-    res.status(500).send('Error adding subscriber');
+    res.status(500).json({message:'Error adding subscriber'});
   }
 });
 

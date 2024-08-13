@@ -175,9 +175,14 @@ export const replyToComment = async (req: Request, res: Response) => {
                 message: notificationMessage,
                 status: notificationStatus
             };
+
+            console.log('Sending notification:', newNotification);
+            console.log('To user ID:', repliedToUserId);
             
             // Assuming `IdeaUser` is the ID of the user to be notified
-            io.to(repliedToUserId).emit('newNotification', newNotification);
+            if(io.to(repliedToUserId).emit('newNotification', newNotification)){
+                console.log('BroadCasted to User:', repliedToUserId);
+            }
         res.status(201).json({ message: 'Reply posted successfully', reply: newReply });
     } catch (error) {
         console.error('Error posting reply:', error);

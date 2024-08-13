@@ -141,7 +141,7 @@ export const inviteMember = async (req: Request, res: Response) => {
         const rgroupId = groupId;
         const memberId = member._id;
         const groupName = group.name;
-        const inviteUrl = 'http://ideas-for-africa-deploy.vercel.app/accept-invite';
+        const inviteUrl = 'https://ideasafrica.org/accept-invite';
 
         const emailContent = generateInviteMessage(ruserId, rgroupId, memberId, groupName, inviteUrl);
 
@@ -160,6 +160,7 @@ export const inviteMember = async (req: Request, res: Response) => {
         };
             
         io.to(userId.toString()).emit('newNotification', newNotification);
+        console.log(newNotification);
         
         res.status(201).json({ message: 'Member invited successfully', member });
     } catch (error) {

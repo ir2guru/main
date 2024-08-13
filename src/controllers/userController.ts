@@ -642,6 +642,7 @@ export const fetchUserProfile = async (req: Request, res: Response) => {
           email: user.email,
           fname: user.fname,
           lname: user.lname,
+          created: user.createdAt,
           profile
       });
   } catch (error) {
