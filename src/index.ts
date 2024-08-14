@@ -60,7 +60,7 @@ app.post('/subscribe', async (req, res) => {
     res.status(201).json({message:'Subscriber added'});
   } catch (err) {
     console.error(err); // Log the error for debugging purposes
-    res.status(500).json({message:'Error adding subscriber'});
+    res.status(201).json({message:'Error adding subscriber'});
   }
 });
 
