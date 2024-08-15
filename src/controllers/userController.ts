@@ -691,7 +691,7 @@ export const changePassword = async (req: Request, res: Response): Promise<Respo
 };
 
 export const fetchUnreadNotificationsByUserId = async (req: Request, res: Response) => {
-    const { userId } = req.params;
+    const { userId, status } = req.params;
 
     if (!userId) {
         return res.status(400).json({ message: 'User ID is required' });
@@ -699,14 +699,14 @@ export const fetchUnreadNotificationsByUserId = async (req: Request, res: Respon
 
     try {
         // Fetch notifications where userId matches and status is 'unread'
-        const notifications = await Notification.find({ 'action.userId': userId, status: 'unread' }).sort({time: -1});
+        const notifications = await Notification.find({ 'action.userId': userId, status: status }).sort({time: -1});
 
         if (notifications.length === 0) {
-            return res.status(404).json({ message: `No unread notifications found for userId: ${userId}`,notifications });
+            return res.status(404).json({ message: `No ${status} notifications found for userId: ${userId}`,notifications });
         }
 
         res.status(200).json({
-            message: 'Unread notifications fetched successfully',
+            message: `${status} notifications fetched successfully`,
             notifications
         });
     } catch (error) {

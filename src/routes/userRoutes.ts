@@ -71,7 +71,7 @@ router.post('/password', changePassword);
 router.post('/ideas/:ideaId/like', likeIdea);
 router.get('/ideas/active/:category', fetchActiveIdeasByCategory);
 router.get('/groups/idea/:ideaId', fetchGroupsByIdeaId);
-router.get('/notifications/unread/:userId', fetchUnreadNotificationsByUserId);
+router.get('/notifications/unread/:userId/:status', fetchUnreadNotificationsByUserId);
 router.post('/profile/fcmtoken', checkAndSetFcmToken);
 router.get('/profile/fcmcheck', checkFcmToken);
 router.get('/profile/returnfcm/:userId', ReturnUserToken);
