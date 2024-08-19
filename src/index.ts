@@ -35,6 +35,7 @@ app.use('/api/groups', require('./routes/groupRoutes'));
 app.use('/api/comments', require('./routes/commentRoutes'));
 app.use('/api/search', require('./routes/searchRoute'));
 app.use('/api/oauth', require('./routes/auth'));
+app.use('/api/admin/', require('./routes/occupationRoutes'));
 // Serve static files from the "uploads" directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

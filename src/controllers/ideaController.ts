@@ -166,12 +166,17 @@ export const fetchIdeas = async (req: Request, res: Response): Promise<void> => 
         const ideasWithDetails = await Promise.all(ideas.map(async (idea) => {
             const user = await User.findById(idea.userId).select('fname lname');
             const profile = await Profile.findOne({ userId: idea.userId }).select('pow ppicture');
-            const thumbs = await Thumb.findOne({ ideaId: idea.id }).select('path');
-            const commentCounts = await fetchCommentAndReplyCounts(idea.id);
-            const ideaLikeCount = await getLikeCountForIdea(idea.id);
-            const userHasLiked = await Like.exists({ userId, ideaId: idea.id });
+            const thumbs = await Thumb.findOne({ ideaId: idea._id }).select('path');
+            const commentCounts = await fetchCommentAndReplyCounts(idea._id);
+            const ideaLikeCount = await getLikeCountForIdea(idea._id);
+            const userHasLiked = await Like.exists({ userId, ideaId: idea._id });
             const wpm = calculateReadingTime(idea.body);
-            const viewCount = await IdeaView.countDocuments({ideaId: idea.id});
+            const modifyCount = await ModifiedIdea.countDocuments({originalIdeaId: idea._id});
+            const viewCount = await IdeaView.countDocuments({ideaId: idea._id});
+            let modified = false;
+            if (modifyCount > 0) {
+                modified = true;
+            }
             
 
             return {
@@ -185,6 +190,8 @@ export const fetchIdeas = async (req: Request, res: Response): Promise<void> => 
                 profile: profile,
                 wordpm: wpm,
                 viewCount: viewCount,
+                modified: modified,
+                modifyCount:modifyCount,
                 userHasLiked: !!userHasLiked // Convert to boolean
             };
         }));
@@ -431,11 +438,16 @@ export const fetchIdeaByStatus = async (req: Request, res: Response) => {
 
         const ideasWithDetails = await Promise.all(ideas.map(async (idea) => {
             const user = await User.findById(idea.userId).select('fname lname');
-            const thumbs = await Thumb.findOne({ ideaId: idea.id }).select('path');
-            const commentCounts = await fetchCommentAndReplyCounts(idea.id);
+            const thumbs = await Thumb.findOne({ ideaId: idea._id }).select('path');
+            const commentCounts = await fetchCommentAndReplyCounts(idea._id);
             const ideaLikeCount = await getLikeCountForIdea(idea.id);
             const profile = await Profile.findOne({ userId: idea.userId });
+            const modifyCount = await ModifiedIdea.countDocuments({originalIdeaId: idea._id});
             const wpm = calculateReadingTime(idea.body);
+            let modified = false;
+            if (modifyCount > 0) {
+                modified = true;
+            }
             return {
                 ...idea.toObject(),
                 fname: user?.fname,
@@ -444,6 +456,8 @@ export const fetchIdeaByStatus = async (req: Request, res: Response) => {
                 likes: ideaLikeCount,
                 count: commentCounts.totalAll,
                 profile: profile,
+                modified: modified,
+                modifyCount:modifyCount,
                 wordpm: wpm
             };
         }));
@@ -540,12 +554,20 @@ export const fetchActiveIdeasByCategory = async (req: Request, res: Response) =>
         // Fetch the additional variable for each idea
         const ideasWithAdditionalData = await Promise.all(
             ideas.map(async (idea) => {
-                const commentCounts = await fetchCommentAndReplyCounts(idea.id);
-                const ideaLikeCount = await getLikeCountForIdea(idea.id);
+                const commentCounts = await fetchCommentAndReplyCounts(idea._id);
+                const ideaLikeCount = await getLikeCountForIdea(idea._id);
                 const profile = await Profile.findOne({ userId: idea.userId });
-                const thumbs = await Thumb.find({ ideaId: idea.id }).exec();
+                const thumbs = await Thumb.find({ ideaId: idea._id }).exec();
                 const user = await User.findById(idea.userId).select('fname lname');
                 const wpm = calculateReadingTime(idea.body);
+                const originalIdeaId = idea._id; 
+                const modifyCount = await ModifiedIdea.countDocuments({ originalIdeaId });
+                console.log('originalIdeaId:', originalIdeaId);
+                console.log('modifyCount:', modifyCount); // Debugging
+                let modified = false;
+                if (modifyCount > 0) {
+                    modified = true;
+                }
                 
                 return {
                     ...idea.toObject(),
@@ -554,7 +576,9 @@ export const fetchActiveIdeasByCategory = async (req: Request, res: Response) =>
                     count: commentCounts.totalAll, // Add the fetched variable to the idea object
                     profile: profile,
                     thumb: thumbs,
-                    wordpm: wpm
+                    wordpm: wpm,
+                    modifyCount:modifyCount,
+                    modified: modified
                 };
             })
         );
@@ -711,10 +735,18 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
                 const user = await User.findById(idea.userId).select('fname lname');
                 const profile = await Profile.findOne({ userId: idea.userId });
                 const wpm = calculateReadingTime(idea.body);
-                const commentCounts = await fetchCommentAndReplyCounts(idea.id);
-                const ideaLikeCount = await getLikeCountForIdea(idea.id);
-                const viewCount = await IdeaView.countDocuments({ideaId: idea.id});
+                const commentCounts = await fetchCommentAndReplyCounts(idea._id);
+                const ideaLikeCount = await getLikeCountForIdea(idea._id);
+                const viewCount = await IdeaView.countDocuments({ideaId: idea._id});
                 let userHasLiked = false;
+                const originalIdeaId = idea._id; 
+                const modifyCount = await ModifiedIdea.countDocuments({ originalIdeaId });
+                console.log('originalIdeaId:', originalIdeaId);
+                console.log('modifyCount:', modifyCount); // Debugging
+                let modified = false;
+                if (modifyCount > 0) {
+                    modified = true;
+                }
 
                 // Check if userId is provided and valid
                 if (userId && userId !== '' && userId !== 'undefined' && userId !== 'null') {
@@ -738,7 +770,9 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
                     wordpm: wpm,
                     likeCount: ideaLikeCount,
                     count: commentCounts.totalAll,
-                    viewCount: viewCount
+                    viewCount: viewCount,
+                    modifyCount:modifyCount,
+                    modified: modified
                 };
             })
         );
@@ -825,9 +859,17 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
                 const user = await User.findById(idea.userId).select('fname lname');
                 const profile = await Profile.findOne({ userId: idea.userId }).select('ppicture');
                 const wpm = calculateReadingTime(idea.body);
-                const commentCounts = await fetchCommentAndReplyCounts(idea.id);
-                const ideaLikeCount = await getLikeCountForIdea(idea.id);
-                const viewCount = await IdeaView.countDocuments({ideaId: idea.id});
+                const commentCounts = await fetchCommentAndReplyCounts(idea._id);
+                const ideaLikeCount = await getLikeCountForIdea(idea._id);
+                const viewCount = await IdeaView.countDocuments({ideaId: idea._id});
+                const originalIdeaId = idea._id; 
+                const modifyCount = await ModifiedIdea.countDocuments({ originalIdeaId });
+                console.log('originalIdeaId:', originalIdeaId);
+                console.log('modifyCount:', modifyCount); // Debugging
+                let modified = false;
+                if (modifyCount > 0) {
+                    modified = true;
+                }
 
                 let userHasLiked = false;
                 if (userId) {
@@ -851,7 +893,9 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
                     wordpm: wpm,
                     likeCount: ideaLikeCount,
                     count: commentCounts.totalAll,
-                    viewCount: viewCount
+                    viewCount: viewCount,
+                    modifyCount:modifyCount,
+                    modified: modified
                 };
             })
         );
