@@ -6,6 +6,10 @@ import Idea from '../models/Idea';
 import Thumb from '../models/thumb';
 import Member from '../models/Member';
 import Profile from '../models/Profile';
+import { getLikeCountForIdea } from '../middleware/LikeCount';
+import { fetchCommentAndReplyCounts } from '../middleware/CommentCounter';
+import IdeaView from '../models/IdeaView';
+import ModifiedIdea from '../models/modifiedIdea';
 
 export const getGroupsByAdmin = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -183,5 +187,77 @@ export const getGroupsByIdea = async (req: Request, res: Response): Promise<void
     } catch (error) {
         console.error('Error fetching groups by idea:', error);
         res.status(500).json({ message: 'Could not fetch groups' });
+    }
+};
+
+export const searchIdeasByHeadline = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { query, page = 1, limit = 10 } = req.query;
+
+        const searchQuery = query ? String(query) : '';
+
+        // Calculate pagination variables
+        const pageNumber = parseInt(page as string, 10) || 1;
+        const resultsPerPage = parseInt(limit as string, 10) || 10;
+        const skip = (pageNumber - 1) * resultsPerPage;
+
+        // Create the search condition
+        const searchCondition = searchQuery
+            ? { headline: { $regex: new RegExp(searchQuery, 'i') } }
+            : {};
+
+        // Fetch the ideas matching the search condition with pagination
+        const ideas = await Idea.find(searchCondition)
+            .skip(skip)
+            .limit(resultsPerPage)
+            .sort({ createdAt: -1 })
+            .exec();
+
+        // Fetch user details and profile details for each idea
+        const ideasWithDetails = await Promise.all(ideas.map(async (idea) => {
+            const user = await User.findById(idea.userId).select('fname lname');
+            // const profile = await Profile.findOne({ userId: idea.userId }).select('ppicture');
+            const profile = await Profile.findOne({ userId: idea.userId  });
+            const commentCounts = await fetchCommentAndReplyCounts(idea._id);
+            const ideaLikeCount = await getLikeCountForIdea(idea._id);
+            const viewCount = await IdeaView.countDocuments({ideaId: idea._id});
+            const originalIdeaId = idea._id; 
+            const modifyCount = await ModifiedIdea.countDocuments({ originalIdeaId });
+            console.log('originalIdeaId:', originalIdeaId);
+            console.log('modifyCount:', modifyCount); // Debugging
+            let modified = false;
+            if (modifyCount > 0) {
+                 modified = true;
+            }
+
+
+            return {
+                ...idea.toObject(),
+                fname: user?.fname,
+                lname: user?.lname,
+                ppicture: profile?.ppicture,
+                commentCounts: commentCounts,
+                ideaLikeCount: ideaLikeCount,
+                viewCount : viewCount,
+                modifyCount : modifyCount,
+                modified : modified
+
+
+            };
+        }));
+
+        // Get the total count of matching ideas
+        const totalIdeas = await Idea.countDocuments(searchCondition);
+
+        res.status(200).json({
+            message: 'Ideas fetched successfully',
+            ideas: ideasWithDetails,
+            total: totalIdeas,
+            currentPage: pageNumber,
+            totalPages: Math.ceil(totalIdeas / resultsPerPage),
+        });
+    } catch (error) {
+        console.error('Error searching ideas:', error);
+        res.status(500).json({ message: 'Failed to search ideas' });
     }
 };
