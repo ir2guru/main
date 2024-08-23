@@ -1,5 +1,5 @@
 import express from 'express';
-import { getGroupsByAdmin, getGroupsByIdea, searchIdeasByHeadline } from '../controllers/searchController';
+import { getGroupsByAdmin, getGroupsByIdea, searchIdeasByHeadline, fetchActiveIdeasByCategory, fetchTopIdeasByLikes, fetchTopIdeasByViews} from '../controllers/searchController';
 
 const router = express.Router();
 
@@ -7,5 +7,8 @@ const router = express.Router();
 router.get('/groups-by-admin', getGroupsByAdmin);
 router.get('/groups-by-idea', getGroupsByIdea);
 router.get('/search', searchIdeasByHeadline);
+router.get('/category', fetchActiveIdeasByCategory);
+router.get('/likes', fetchTopIdeasByLikes);
+router.get('/views', fetchTopIdeasByViews);
 
 module.exports = router;

@@ -10,6 +10,26 @@ import { getLikeCountForIdea } from '../middleware/LikeCount';
 import { fetchCommentAndReplyCounts } from '../middleware/CommentCounter';
 import IdeaView from '../models/IdeaView';
 import ModifiedIdea from '../models/modifiedIdea';
+import { hasUserLikedIdea } from '../middleware/LikedIdea';
+
+
+function calculateReadingTime(text: string): number {
+    // Calculate the number of words in the text
+    const words = text.trim().split(/\s+/).length;
+  
+    // Reading speed in words per minute
+    const wordsPerMinute = 200;
+  
+    // Calculate the reading time in minutes
+    const timeInMinutes = words / wordsPerMinute;
+  
+    // Convert the time to seconds
+    const timeInSeconds = timeInMinutes * 60;
+  
+    // Return the total time in seconds
+    return Math.ceil(timeInSeconds);
+  }
+  
 
 export const getGroupsByAdmin = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -221,6 +241,7 @@ export const searchIdeasByHeadline = async (req: Request, res: Response): Promis
             const commentCounts = await fetchCommentAndReplyCounts(idea._id);
             const ideaLikeCount = await getLikeCountForIdea(idea._id);
             const viewCount = await IdeaView.countDocuments({ideaId: idea._id});
+            const wpm = calculateReadingTime(idea.body);
             const originalIdeaId = idea._id; 
             const modifyCount = await ModifiedIdea.countDocuments({ originalIdeaId });
             console.log('originalIdeaId:', originalIdeaId);
@@ -239,6 +260,7 @@ export const searchIdeasByHeadline = async (req: Request, res: Response): Promis
                 commentCounts: commentCounts,
                 ideaLikeCount: ideaLikeCount,
                 viewCount : viewCount,
+                wordpm: wpm,
                 modifyCount : modifyCount,
                 modified : modified
 
@@ -259,5 +281,328 @@ export const searchIdeasByHeadline = async (req: Request, res: Response): Promis
     } catch (error) {
         console.error('Error searching ideas:', error);
         res.status(500).json({ message: 'Failed to search ideas' });
+    }
+};
+
+export const fetchActiveIdeasByCategory = async (req: Request, res: Response): Promise<void> => {
+    const { category, page = 1, limit = 10 } = req.query;
+
+    const searchQuery = category ? String(category) : '';
+
+    // Calculate pagination variables
+    const pageNumber = parseInt(page as string, 10) || 1;
+    const resultsPerPage = parseInt(limit as string, 10) || 10;
+    const skip = (pageNumber - 1) * resultsPerPage;
+
+    // Create the search condition
+    const searchCondition = searchQuery
+        ? { category: { $regex: new RegExp(searchQuery, 'i') } }
+        : {};
+
+    try {
+        // Fetch ideas where category matches and status is 'allowed'
+        const ideas = await Idea.find({ ...searchCondition, status: 'allowed' })
+            .skip(skip)
+            .limit(resultsPerPage)
+            .sort({ createdAt: -1 })
+            .exec();
+
+        if (ideas.length === 0) {
+            res.status(404).json({ message: `No active ideas found in category: ${category}` });
+        }
+
+        // Fetch the additional data for each idea
+        const ideasWithAdditionalData = await Promise.all(
+            ideas.map(async (idea) => {
+                const commentCounts = await fetchCommentAndReplyCounts(idea._id);
+                const ideaLikeCount = await getLikeCountForIdea(idea._id);
+                const profile = await Profile.findOne({ userId: idea.userId });
+                const thumbs = await Thumb.find({ ideaId: idea._id }).exec();
+                const user = await User.findById(idea.userId).select('fname lname');
+                const wpm = calculateReadingTime(idea.body);
+                const originalIdeaId = idea._id; 
+                const modifyCount = await ModifiedIdea.countDocuments({ originalIdeaId });
+
+                return {
+                    ...idea.toObject(),
+                    user: user ? { fname: user.fname, lname: user.lname } : null,
+                    likes: ideaLikeCount,
+                    count: commentCounts.totalAll,
+                    profile: profile?.toObject() || null,
+                    thumb: thumbs.map(thumb => thumb.path), // If you only need paths
+                    wordpm: wpm,
+                    modifyCount: modifyCount,
+                    modified: modifyCount > 0,
+                };
+            })
+        );
+
+        const totalIdeas = await Idea.countDocuments({ ...searchCondition, status: 'allowed' });
+
+        res.status(200).json({
+            message: 'Active ideas fetched successfully',
+            ideas: ideasWithAdditionalData,
+            currentPage: pageNumber,
+            totalPages: Math.ceil(totalIdeas / resultsPerPage),
+        });
+    } catch (error) {
+        console.error('Error fetching active ideas by category:', error);
+        res.status(500).json({ message: 'Failed to fetch active ideas' });
+    }
+};
+
+
+export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { page = 1, limit = 10, userId, category } = req.query;
+
+        // Parse pagination parameters
+        const pageNumber = parseInt(page as string, 10) || 1;
+        const resultsPerPage = parseInt(limit as string, 10) || 10;
+        const skip = (pageNumber - 1) * resultsPerPage;
+
+        // Build the aggregation pipeline
+        const pipeline: any[] = [
+            {
+                $lookup: {
+                    from: 'likes',
+                    localField: '_id',
+                    foreignField: 'ideaId',
+                    as: 'likes'
+                }
+            },
+            {
+                $addFields: {
+                    likeCount: { $size: '$likes' }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'thumbs',
+                    localField: '_id',
+                    foreignField: 'ideaId',
+                    as: 'thumbs'
+                }
+            },
+            {
+                $addFields: {
+                    thumbPath: { $arrayElemAt: ['$thumbs.path', 0] }
+                }
+            },
+            {
+                $sort: { likeCount: -1 }
+            },
+            {
+                $skip: skip
+            },
+            {
+                $limit: resultsPerPage
+            },
+            {
+                $project: {
+                    likes: 0,
+                    thumbs: 0
+                }
+            }
+        ];
+
+        // Add category filter if provided
+        if (category) {
+            pipeline.unshift({
+                $match: {
+                    category: category
+                }
+            });
+        }
+
+        // Fetch the ideas, populate with the number of likes, and thumb paths
+        const ideasWithDetails = await Idea.aggregate(pipeline);
+
+        // Get the total number of ideas matching the criteria
+        const totalIdeas = await Idea.countDocuments(category ? { category: category } : {});
+
+        // Loop through each idea and fetch user details
+        const ideasWithUserDetails = await Promise.all(
+            ideasWithDetails.map(async (idea) => {
+                const user = await User.findById(idea.userId).select('fname lname');
+                const profile = await Profile.findOne({ userId: idea.userId });
+                const wpm = calculateReadingTime(idea.body);
+                const commentCounts = await fetchCommentAndReplyCounts(idea._id);
+                const ideaLikeCount = await getLikeCountForIdea(idea._id);
+                const viewCount = await IdeaView.countDocuments({ ideaId: idea._id });
+                let userHasLiked = false;
+                const originalIdeaId = idea._id; 
+                const modifyCount = await ModifiedIdea.countDocuments({ originalIdeaId });
+
+                let modified = false;
+                if (modifyCount > 0) {
+                    modified = true;
+                }
+
+                // Check if userId is provided and valid
+                if (userId && userId !== '' && userId !== 'undefined' && userId !== 'null') {
+                    const foundUser = await User.findById(userId).exec();
+                    if (foundUser) {
+                        userHasLiked = await hasUserLikedIdea(foundUser._id, idea._id);
+                    } else {
+                        res.status(200).json({ message: 'User not found' });
+                        return;
+                    }
+                }
+
+                return {
+                    ...idea,
+                    fname: user?.fname || '',
+                    lname: user?.lname || '',
+                    ppicture: profile?.ppicture || '',
+                    pow: profile?.pow,
+                    position: profile?.position,
+                    hasliked: userHasLiked,
+                    wordpm: wpm,
+                    likeCount: ideaLikeCount,
+                    count: commentCounts.totalAll,
+                    viewCount: viewCount,
+                    modifyCount: modifyCount,
+                    modified: modified
+                };
+            })
+        );
+
+        res.status(200).json({
+            message: 'Top ideas fetched successfully',
+            ideas: ideasWithUserDetails,
+            currentPage: pageNumber,
+            totalPages: Math.ceil(totalIdeas / resultsPerPage),
+        });
+    } catch (error) {
+        console.error('Error fetching top ideas by likes:', error);
+        res.status(500).json({ message: 'Failed to fetch top ideas' });
+    }
+};
+
+export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { page = 1, limit = 10, userId, category } = req.query;
+
+        // Parse pagination parameters
+        const pageNumber = parseInt(page as string, 10) || 1;
+        const resultsPerPage = parseInt(limit as string, 10) || 10;
+        const skip = (pageNumber - 1) * resultsPerPage;
+
+        // Build the aggregation pipeline
+        const pipeline: any[] = [
+            {
+                $lookup: {
+                    from: 'ideaviews',
+                    localField: '_id',
+                    foreignField: 'ideaId',
+                    as: 'views'
+                }
+            },
+            {
+                $addFields: {
+                    viewCount: { $size: '$views' }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'thumbs',
+                    localField: '_id',
+                    foreignField: 'ideaId',
+                    as: 'thumbs'
+                }
+            },
+            {
+                $addFields: {
+                    thumbPath: { $arrayElemAt: ['$thumbs.path', 0] }
+                }
+            },
+            {
+                $sort: { viewCount: -1 }
+            },
+            {
+                $skip: skip
+            },
+            {
+                $limit: resultsPerPage
+            },
+            {
+                $project: {
+                    views: 0,
+                    thumbs: 0
+                }
+            }
+        ];
+
+        // Add category filter if provided
+        if (category) {
+            pipeline.unshift({
+                $match: {
+                    category: category
+                }
+            });
+        }
+
+        // Fetch the ideas, populate with the number of views, and thumb paths
+        const ideasWithDetails = await Idea.aggregate(pipeline);
+
+        // Get the total number of ideas matching the criteria
+        const totalIdeas = await Idea.countDocuments(category ? { category: category } : {});
+
+        // Loop through each idea and fetch user details
+        const ideasWithUserDetails = await Promise.all(
+            ideasWithDetails.map(async (idea) => {
+                const user = await User.findById(idea.userId).select('fname lname');
+                const profile = await Profile.findOne({ userId: idea.userId }).select('ppicture');
+                const wpm = calculateReadingTime(idea.body);
+                const commentCounts = await fetchCommentAndReplyCounts(idea._id);
+                const ideaLikeCount = await getLikeCountForIdea(idea._id);
+                const viewCount = await IdeaView.countDocuments({ ideaId: idea._id });
+                const originalIdeaId = idea._id; 
+                const modifyCount = await ModifiedIdea.countDocuments({ originalIdeaId });
+
+                let modified = false;
+                if (modifyCount > 0) {
+                    modified = true;
+                }
+
+                let userHasLiked = false;
+                if (userId) {
+                    const foundUser = await User.findById(userId).exec();
+                    if (foundUser) {
+                        userHasLiked = await hasUserLikedIdea(foundUser._id, idea._id);
+                    } else {
+                        res.status(200).json({ message: 'User not found' });
+                        return;
+                    }
+                }
+
+                return {
+                    ...idea,
+                    fname: user?.fname || '',
+                    lname: user?.lname || '',
+                    ppicture: profile?.ppicture || '',
+                    pow: profile?.pow,
+                    position: profile?.position,
+                    hasliked: userHasLiked,
+                    wordpm: wpm,
+                    likeCount: ideaLikeCount,
+                    count: commentCounts.totalAll,
+                    viewCount: viewCount,
+                    modifyCount: modifyCount,
+                    modified: modified
+                };
+            })
+        );
+
+        res.status(200).json({
+            message: 'Top ideas fetched successfully',
+            ideas: ideasWithUserDetails,
+            currentPage: pageNumber,
+            totalPages: Math.ceil(totalIdeas / resultsPerPage),
+        });
+    } catch (error) {
+        console.error('Error fetching top ideas by views:', error);
+        res.status(500).json({ message: 'Failed to fetch top ideas' });
     }
 };
