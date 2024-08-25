@@ -240,6 +240,7 @@ export const searchIdeasByHeadline = async (req: Request, res: Response): Promis
             const profile = await Profile.findOne({ userId: idea.userId  });
             const commentCounts = await fetchCommentAndReplyCounts(idea._id);
             const ideaLikeCount = await getLikeCountForIdea(idea._id);
+            const thumbs = await Thumb.find({ ideaId: idea._id }).exec();
             const viewCount = await IdeaView.countDocuments({ideaId: idea._id});
             const wpm = calculateReadingTime(idea.body);
             const originalIdeaId = idea._id; 
@@ -260,6 +261,7 @@ export const searchIdeasByHeadline = async (req: Request, res: Response): Promis
                 commentCounts: commentCounts,
                 ideaLikeCount: ideaLikeCount,
                 viewCount : viewCount,
+                thumb: thumbs.map(thumb => thumb.path), // If you only need paths
                 wordpm: wpm,
                 modifyCount : modifyCount,
                 modified : modified
@@ -425,6 +427,7 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
         const ideasWithUserDetails = await Promise.all(
             ideasWithDetails.map(async (idea) => {
                 const user = await User.findById(idea.userId).select('fname lname');
+                const thumbs = await Thumb.findOne({ ideaId: idea._id }).select('path');
                 const profile = await Profile.findOne({ userId: idea.userId });
                 const wpm = calculateReadingTime(idea.body);
                 const commentCounts = await fetchCommentAndReplyCounts(idea._id);
@@ -455,6 +458,7 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
                     fname: user?.fname || '',
                     lname: user?.lname || '',
                     ppicture: profile?.ppicture || '',
+                    banner: thumbs,
                     pow: profile?.pow,
                     position: profile?.position,
                     hasliked: userHasLiked,
@@ -553,6 +557,7 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
         const ideasWithUserDetails = await Promise.all(
             ideasWithDetails.map(async (idea) => {
                 const user = await User.findById(idea.userId).select('fname lname');
+                const thumbs = await Thumb.findOne({ ideaId: idea._id }).select('path');
                 const profile = await Profile.findOne({ userId: idea.userId }).select('ppicture');
                 const wpm = calculateReadingTime(idea.body);
                 const commentCounts = await fetchCommentAndReplyCounts(idea._id);
@@ -582,6 +587,7 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
                     fname: user?.fname || '',
                     lname: user?.lname || '',
                     ppicture: profile?.ppicture || '',
+                    banner: thumbs,
                     pow: profile?.pow,
                     position: profile?.position,
                     hasliked: userHasLiked,
