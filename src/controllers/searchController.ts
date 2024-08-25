@@ -261,10 +261,14 @@ export const searchIdeasByHeadline = async (req: Request, res: Response): Promis
                 commentCounts: commentCounts,
                 ideaLikeCount: ideaLikeCount,
                 viewCount : viewCount,
-                thumb: thumbs.map(thumb => thumb.path), // If you only need paths
+                thumbPath: thumbs.map(thumb => thumb.path), // If you only need paths
                 wordpm: wpm,
                 modifyCount : modifyCount,
-                modified : modified
+                modified : modified,
+                pow: profile?.pow,
+                position: profile?.position,
+                likeCount: ideaLikeCount,
+                count: commentCounts.totalAll
 
 
             };
@@ -320,21 +324,30 @@ export const fetchActiveIdeasByCategory = async (req: Request, res: Response): P
                 const ideaLikeCount = await getLikeCountForIdea(idea._id);
                 const profile = await Profile.findOne({ userId: idea.userId });
                 const thumbs = await Thumb.find({ ideaId: idea._id }).exec();
+                const viewCount = await IdeaView.countDocuments({ ideaId: idea._id });
                 const user = await User.findById(idea.userId).select('fname lname');
                 const wpm = calculateReadingTime(idea.body);
                 const originalIdeaId = idea._id; 
                 const modifyCount = await ModifiedIdea.countDocuments({ originalIdeaId });
 
+                
+
                 return {
                     ...idea.toObject(),
-                    user: user ? { fname: user.fname, lname: user.lname } : null,
+                    fname: user?.fname || '',
+                    lname: user?.lname || '',
                     likes: ideaLikeCount,
                     count: commentCounts.totalAll,
                     profile: profile?.toObject() || null,
-                    thumb: thumbs.map(thumb => thumb.path), // If you only need paths
+                    thumbPath: thumbs.map(thumb => thumb.path), // If you only need paths
                     wordpm: wpm,
                     modifyCount: modifyCount,
                     modified: modifyCount > 0,
+                    ppicture: profile?.ppicture || '',
+                    pow: profile?.pow,
+                    position: profile?.position,
+                    likeCount: ideaLikeCount,
+                    viewCount: viewCount
                 };
             })
         );
@@ -458,7 +471,6 @@ export const fetchTopIdeasByLikes = async (req: Request, res: Response): Promise
                     fname: user?.fname || '',
                     lname: user?.lname || '',
                     ppicture: profile?.ppicture || '',
-                    banner: thumbs,
                     pow: profile?.pow,
                     position: profile?.position,
                     hasliked: userHasLiked,
@@ -587,7 +599,6 @@ export const fetchTopIdeasByViews = async (req: Request, res: Response): Promise
                     fname: user?.fname || '',
                     lname: user?.lname || '',
                     ppicture: profile?.ppicture || '',
-                    banner: thumbs,
                     pow: profile?.pow,
                     position: profile?.position,
                     hasliked: userHasLiked,
