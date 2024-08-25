@@ -240,7 +240,7 @@ export const searchIdeasByHeadline = async (req: Request, res: Response): Promis
             const profile = await Profile.findOne({ userId: idea.userId  });
             const commentCounts = await fetchCommentAndReplyCounts(idea._id);
             const ideaLikeCount = await getLikeCountForIdea(idea._id);
-            const thumbs = await Thumb.find({ ideaId: idea._id }).exec();
+            const thumbs = await Thumb.findOne({ ideaId: idea._id });
             const viewCount = await IdeaView.countDocuments({ideaId: idea._id});
             const wpm = calculateReadingTime(idea.body);
             const originalIdeaId = idea._id; 
@@ -261,7 +261,7 @@ export const searchIdeasByHeadline = async (req: Request, res: Response): Promis
                 commentCounts: commentCounts,
                 ideaLikeCount: ideaLikeCount,
                 viewCount : viewCount,
-                thumbPath: thumbs.map(thumb => thumb.path), // If you only need paths
+                thumbPath: thumbs?.path, // If you only need paths
                 wordpm: wpm,
                 modifyCount : modifyCount,
                 modified : modified,
@@ -323,7 +323,7 @@ export const fetchActiveIdeasByCategory = async (req: Request, res: Response): P
                 const commentCounts = await fetchCommentAndReplyCounts(idea._id);
                 const ideaLikeCount = await getLikeCountForIdea(idea._id);
                 const profile = await Profile.findOne({ userId: idea.userId });
-                const thumbs = await Thumb.find({ ideaId: idea._id }).exec();
+                const thumbs = await Thumb.findOne({ ideaId: idea._id });
                 const viewCount = await IdeaView.countDocuments({ ideaId: idea._id });
                 const user = await User.findById(idea.userId).select('fname lname');
                 const wpm = calculateReadingTime(idea.body);
@@ -339,7 +339,7 @@ export const fetchActiveIdeasByCategory = async (req: Request, res: Response): P
                     likes: ideaLikeCount,
                     count: commentCounts.totalAll,
                     profile: profile?.toObject() || null,
-                    thumbPath: thumbs.map(thumb => thumb.path), // If you only need paths
+                    thumbPath: thumbs?.path, // If you only need paths
                     wordpm: wpm,
                     modifyCount: modifyCount,
                     modified: modifyCount > 0,
